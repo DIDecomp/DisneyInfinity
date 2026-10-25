@@ -14,7 +14,7 @@ Sections:
 	.bss        type:bss align:4096
 
 Runtime.PPCEABI.H/__init_cpp_exceptions.cpp:
-	.text       start:0x8046195C end:0x80461990
+	.text       start:0x80461920 end:0x80461990
 	.ctors      start:0x804827E0 end:0x804827E4
 	.dtors      start:0x80482880 end:0x80482888
 	.sdata      start:0x804BC6F0 end:0x804BC6F8

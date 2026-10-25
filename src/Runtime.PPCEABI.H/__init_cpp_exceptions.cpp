@@ -4,13 +4,12 @@
 static int fragmentID = -2;
 
 // clang-format off
-ASM static char* GetR2()
-{
-#ifdef __MWERKS__
-	nofralloc
-	mr r3, r2
-	blr
-#endif
+static char* GetR2() {
+    register char* ret;
+    asm {
+        mr ret, r2
+    }
+    return ret;
 }
 // clang-format on
 
