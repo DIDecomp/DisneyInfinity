@@ -1,5 +1,8 @@
+// from sonicheroes, partly
+
+#include "types.h"
 #include "Runtime.PPCEABI.H/NMWException.h"
-#include "Runtime.PPCEABI.H/__ppc_eabi_linker.h"
+#include "PowerPC_EABI_Support/Runtime/__ppc_eabi_linker.h"
 
 static int fragmentID = -2;
 
@@ -14,7 +17,6 @@ static char* GetR2() {
 // clang-format on
 
 extern "C" {
-
 // __fini_cpp_exceptions is defined first because this compiler emits functions
 // in source order, and the original places it before __init_cpp_exceptions.
 void __fini_cpp_exceptions()
@@ -34,6 +36,6 @@ void __init_cpp_exceptions()
 }
 }
 
-DECL_SECT(".ctors") extern void* const __init_cpp_exceptions_reference  = __init_cpp_exceptions;
-DECL_SECT(".dtors") extern void* const __destroy_global_chain_reference = __destroy_global_chain;
-DECL_SECT(".dtors") extern void* const __fini_cpp_exceptions_reference  = __fini_cpp_exceptions;
+__declspec(section ".ctors") extern void* const __init_cpp_exceptions_reference  = __init_cpp_exceptions;
+__declspec(section ".dtors") extern void* const __destroy_global_chain_reference = __destroy_global_chain;
+__declspec(section ".dtors") extern void* const __fini_cpp_exceptions_reference  = __fini_cpp_exceptions;
