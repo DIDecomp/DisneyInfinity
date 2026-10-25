@@ -237,7 +237,7 @@ cflags_runtime = [
     "-str reuse,pool,readonly",
     "-gccinc",
     "-common off",
-    "-inline auto.deferred",
+    "-inline auto,deferred",
 ]
 
 # REL flags

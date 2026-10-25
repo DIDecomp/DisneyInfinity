@@ -22,4 +22,6 @@ SECTIONS
 FORCEACTIVE
 {
     $FORCEACTIVE
+    __init_cpp_exceptions_reference
+    __fini_cpp_exceptions_reference
 }
