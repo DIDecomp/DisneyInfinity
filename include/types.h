@@ -1,15 +1,36 @@
-#ifndef _TYPES_H_
-#define _TYPES_H_
+#ifndef TYPES_H
+#define TYPES_H
 
-#define ARRAY_COUNT(arr) (s32)(sizeof(arr) / sizeof(arr[0]))
+typedef signed char s8;
+typedef signed short s16;
+typedef signed int s32;
+typedef signed long long s64;
 
-//a bit of a hack to get the size of a member from a struct type
-#define MEMBER_SIZE(type, member) sizeof(((type *)0)->member)
+typedef unsigned char u8;
+typedef unsigned short u16;
+typedef unsigned int u32;
+typedef unsigned long long u64;
 
-//a bit of a hack to get the array count of a member from a struct type
-#define ARRAY_COUNT_OF_MEMBER(type, member) \
-    (sizeof(((type *)0)->member) / sizeof(((type *)0)->member[0]))
+typedef float f32;
+typedef double f64;
 
-#include "revolution/types.h"
+typedef unsigned int uint;
+
+// The SDK spells its boolean as a plain int. Kept here rather than repeated per
+// file so two translation units cannot end up disagreeing about it silently.
+typedef int BOOL;
+
+#define FALSE 0
+#define TRUE  1
+
+#define NULL 0
+
+#ifdef __MWERKS__
+#define ASM             asm
+#define DECL_SECT(sect) __declspec(section sect)
+#else
+#define ASM
+#define DECL_SECT(sect)
+#endif
 
 #endif

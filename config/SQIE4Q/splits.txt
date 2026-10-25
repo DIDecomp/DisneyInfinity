@@ -13,12 +13,9 @@ Sections:
 	.data       type:data align:64
 	.bss        type:bss align:4096
 
-Runtime.PPCEABI.H/global_destructor_chain.c:
-	.text       start:0x80460B24 end:0x80460B84
-	.sbss       start:0x804BD708 end:0x804BD710
-
 Runtime.PPCEABI.H/__init_cpp_exceptions.cpp:
 	.text       start:0x80461920 end:0x80461990
 	.ctors      start:0x804827E0 end:0x804827E4
-	.dtors      start:0x80482880 end:0x80482888
+	.dtors      start:0x80482880 end:0x80482884
+	.dtors      start:0x80482884 end:0x80482888
 	.sdata      start:0x804BC6F0 end:0x804BC6F8
