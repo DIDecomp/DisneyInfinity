@@ -210,6 +210,7 @@ cflags_base = [
     "-str reuse",
     "-enc SJIS",  # For Wii compilers, replace with `-enc SJIS`
     "-i include",
+    "-i include/stl",
     f"-i build/{config.version}/include",
     f"-DBUILD_VERSION={version_num}",
     f"-DVERSION_{config.version}",
@@ -238,6 +239,7 @@ cflags_runtime = [
     "-gccinc",
     "-common off",
     "-inline auto,deferred",
+    "-func_align 4",
 ]
 
 # REL flags
@@ -291,8 +293,8 @@ config.libs = [
         "cflags": cflags_runtime,
         "progress_category": "sdk",  # str | List[str]
         "objects": [
-            Object(NonMatching, "Runtime.PPCEABI.H/global_destructor_chain.c"),
-            Object(NonMatching, "Runtime.PPCEABI.H/__init_cpp_exceptions.cpp"),
+            Object(Matching, "Runtime.PPCEABI.H/global_destructor_chain.c"),
+            Object(Matching, "Runtime.PPCEABI.H/__init_cpp_exceptions.cpp"),
         ],
     },
 ]
