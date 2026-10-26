@@ -256,8 +256,8 @@ config.linker_version = "Wii/1.7"
 def DolphinLib(lib_name: str, objects: List[Object]) -> Dict[str, Any]:
     return {
         "lib": lib_name,
-        "mw_version": "GC/1.2.5n",
-        "cflags": cflags_base,
+        "mw_version": "Wii/1.0",
+        "cflags": [*cflags_base],
         "progress_category": "sdk",
         "objects": objects,
     }
@@ -297,6 +297,10 @@ config.libs = [
             Object(Matching, "Runtime.PPCEABI.H/__init_cpp_exceptions.cpp"),
         ],
     },
+    DolphinLib("OS", [
+        Object(NonMatching, "revolution/OS/__start.c"),
+        Object(NonMatching, "revolution/OS/__ppc_eabi_init.c"),
+    ]),
 ]
 
 

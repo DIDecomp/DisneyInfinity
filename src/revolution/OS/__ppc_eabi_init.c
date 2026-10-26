@@ -1,10 +1,17 @@
+#include "stddef.h"
 #include <revolution/BASE.h>
 #include <revolution/OS.h>
+#include <revolution/DVD.h>
 
 #pragma section ".ctors$00"
 DECL_SECTION(".ctors$00") extern funcptr_t _ctors[];
 #pragma section ".dtors$00"
 DECL_SECTION(".dtors$00") extern funcptr_t _dtors[];
+
+extern u32 lbl_804BCA84;
+extern u32 lbl_804BCA88;
+
+extern void fn_8008D330(void);
 
 asm void __init_hardware(void) {
     // clang-format off
@@ -52,10 +59,37 @@ _loop:
     // clang-format on
 }
 
+asm void __unk_func(void) {
+    // clang-format off
+    fralloc
+
+    bl DVDInit
+    bl fn_8008D330
+
+    frfree
+    blr
+    // clang-format on
+}
+
+void __load_cpp(funcptr_t *arr, void* debug_str) {
+    funcptr_t* val;
+    for (val = arr; *val != NULL; val++) {
+        (*val)();
+    }
+}
+
+void __init_cpp(void) {
+    __load_cpp(_ctors, "constructors");
+}
+
 asm void __init_user(void) {
     // clang-format off
     fralloc
 
+    stw r14, lbl_804BCA84
+    stw r15, lbl_804BCA88
+
+    bl __unk_func
     bl __init_cpp
 
     frfree
@@ -63,20 +97,8 @@ asm void __init_user(void) {
     // clang-format on
 }
 
-void __init_cpp(void) {
-    funcptr_t* ctor;
-
-    for (ctor = _ctors; *ctor != NULL; ctor++) {
-        (*ctor)();
-    }
-}
-
 void __fini_cpp(void) {
-    funcptr_t* dtor;
-
-    for (dtor = _dtors; *dtor != NULL; dtor++) {
-        (*dtor)();
-    }
+    __load_cpp(_dtors, "destructors");
 }
 
 void exit(void) {
