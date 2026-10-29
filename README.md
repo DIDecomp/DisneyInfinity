@@ -1,5 +1,5 @@
 Disney Infinity (Wii)  
-[![Build Status]][actions] [![Code Progress]][progress] [![Data Progress]][progress] [![Discord Badge]][discord]
+[![Build Status]][actions] [![Discord Badge]][discord]
 =============
 
 <!--
@@ -21,6 +21,7 @@ Replace with your Discord server's ID and invite URL.
 [discord]: https://discord.gg/hKx3FJJgrV
 
 A work-in-progress decompilation of Disney Infinity for Wii.
+Currently only builds DOL due to insane split times when building with REL.
 
 This repository does **not** contain any game assets or assembly whatsoever. An existing copy of the game is required.
 
