@@ -1,5 +1,6 @@
 #ifndef RVL_SDK_DVD_BROADWAY_H
 #define RVL_SDK_DVD_BROADWAY_H
+#include <revolution/ESP.h>
 #include <revolution/types.h>
 #ifdef __cplusplus
 extern "C" {
@@ -8,7 +9,6 @@ extern "C" {
 // Forward declarations
 typedef struct DVDDiskID;
 typedef struct DVDDriveInfo;
-typedef struct ESPTicket;
 typedef struct ESPTmd;
 typedef struct OSAlarm;
 
@@ -31,7 +31,7 @@ typedef void (*DVDLowCallback)(u32 intType);
 
 BOOL DVDLowInit(void);
 BOOL DVDLowReadDiskID(struct DVDDiskID* out, DVDLowCallback callback);
-BOOL DVDLowOpenPartition(u32 offset, const struct ESPTicket* ticket,
+BOOL DVDLowOpenPartition(u32 offset, const ESTicket* ticket,
                          u32 certsSize, const void* certs, struct ESPTmd* tmd,
                          DVDLowCallback callback);
 BOOL DVDLowClosePartition(DVDLowCallback callback);

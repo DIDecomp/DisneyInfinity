@@ -21,18 +21,18 @@ static u32 BI2DebugFlagHolder;
 
 static char GameNameBuffer[sizeof('ABCD') + 1];
 
-static f64 ZeroF;     // for lfd
-static f32 ZeroPS[2]; // for psl_l
-
 static OSExceptionHandler* OSExceptionTable;
-
 static BOOL AreWeInitialized;
+static __vec2x32float__ ZeroPS; // for psl_l
+static f64 ZeroF;     // for lfd
+
+
 DECL_WEAK BOOL __OSIsGcam;
 BOOL __OSInNandBoot;
 BOOL __OSInIPL;
 
 const char* __OSVersion =
-    "<< RVL_SDK - OS \trelease build: Apr 24 2007 11:50:47 (0x4199_60831) >>";
+    "<< RVL_SDK - OS \trelease build: Aug 23 2010 17:33:06 (0x4302_145) >>";
 
 static void OSExceptionInit(void);
 
@@ -730,8 +730,7 @@ static asm void __OSDBJump(void){
     // clang-format on
 }
 
-OSExceptionHandler
-    __OSSetExceptionHandler(u8 type, OSExceptionHandler handler) {
+OSExceptionHandler __OSSetExceptionHandler(u8 type, OSExceptionHandler handler) {
     const OSExceptionHandler old = OSExceptionTable[type];
     OSExceptionTable[type] = handler;
     return old;
@@ -748,7 +747,7 @@ static asm void OSExceptionVector(void) {
     entry __OSEVStart
 
     mtsprg0 r4
-    
+
     // Current OS context (physical address)
     lwz r4, 0x000000C0(0)
     stw r3, OSContext.gprs[3](r4)
@@ -868,10 +867,12 @@ static const char* AppGameNameForSysMenu = "HAEA";
 const char* OSGetAppGamename(void) {
     int i;
     const char* name =
-        (const char*)OSPhysicalToCached(OS_PHYS_CURRENT_APP_NAME);
+        (const char*)OSPhysicalToCached(0x3194);
 
     if (__OSInIPL) {
         name = AppGameNameForSysMenu;
+    } else if (name[0] >= '0' && name[0] <= '9' || name[0] >= 'A' && name[0] <= 'Z') {
+        name = (const char*)OSPhysicalToCached(OS_PHYS_CURRENT_APP_NAME);
     }
 
     for (i = 0; i < 4; i++) {

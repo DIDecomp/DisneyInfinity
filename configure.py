@@ -257,7 +257,7 @@ def DolphinLib(lib_name: str, objects: List[Object]) -> Dict[str, Any]:
     return {
         "lib": lib_name,
         "mw_version": "Wii/1.0",
-        "cflags": [*cflags_base],
+        "cflags": [*cflags_base, "-func_align 16"],
         "progress_category": "sdk",
         "objects": objects,
     }
@@ -297,9 +297,25 @@ config.libs = [
             Object(Matching, "Runtime.PPCEABI.H/__init_cpp_exceptions.cpp"),
         ],
     },
+    # most of these are nonmatching because when they are added, they cause the
+    #   next TU to be unpadded.
+    # __ppc_eabi_init & OS.c is true nonmatching
+    # OSCache is dropping DCZeroRange for seemingly no reason, even with FORCEACTIVE
     DolphinLib("OS", [
         Object(NonMatching, "revolution/OS/__start.c"),
         Object(NonMatching, "revolution/OS/__ppc_eabi_init.c"),
+        Object(NonMatching, "revolution/OS/OS.c"),
+        Object(Matching, "revolution/OS/OSAlarm.c"),
+        Object(Matching, "revolution/OS/OSArena.c"),
+        Object(Matching, "revolution/OS/OSAudioSystem.c"),
+        Object(Matching, "revolution/OS/OSCache.c"),
+        Object(Matching, "revolution/OS/OSContext.c"),
+        Object(Matching, "revolution/OS/OSError.c"),
+        Object(NonMatching, "revolution/OS/OSExec.c"),
+        Object(NonMatching, "revolution/OS/OSFatal.c"),
+        Object(NonMatching, "revolution/OS/OSFont.c"),
+        Object(NonMatching, "revolution/OS/OSInterrupt.c"),
+        Object(NonMatching, "revolution/OS/OSLink.c"),
     ]),
 ]
 

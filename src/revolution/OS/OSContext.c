@@ -9,13 +9,13 @@ static asm void __OSLoadFPUContext(UNKWORD unused, register OSContext* ctx) {
     lhz r5, ctx->state
     clrlwi. r5, r5, 31
     beq _exit
-    
+
     lfd f0, ctx->fpscr_pad
     mtfs f0
     mfspr r5, 0x398
     rlwinm. r5, r5, 3, 31, 31
     beq _load_fprs
-    
+
     psq_l f0, OSContext.psfs[0](ctx), 0, 0
     psq_l f1, OSContext.psfs[1](ctx), 0, 0
     psq_l f2, OSContext.psfs[2](ctx), 0, 0
@@ -92,7 +92,7 @@ static asm void __OSSaveFPUContext(UNKWORD unused, UNKWORD unused1,
                                    register OSContext* ctx) {
     // clang-format off
     nofralloc
-    
+
     lhz r3, ctx->state
     ori r3, r3, OS_CONTEXT_STATE_FP_SAVED
     sth r3, ctx->state
@@ -172,6 +172,15 @@ static asm void __OSSaveFPUContext(UNKWORD unused, UNKWORD unused1,
 
 _exit:
     blr
+    // clang-format on
+}
+
+asm void OSLoadFPUContext(register OSContext* ctx) {
+    // clang-format off
+    nofralloc
+
+    addi r4, ctx, 0
+    b __OSLoadFPUContext
     // clang-format on
 }
 
@@ -286,7 +295,7 @@ asm void OSLoadContext(register OSContext* ctx) {
     cmplw r6, r0
     bge _srr0_not_in_disableintr
     stw r5, ctx->srr0
-        
+
 _srr0_not_in_disableintr:
     lwz r0, ctx->gprs[0]
     lwz r1, ctx->gprs[1]
@@ -299,10 +308,10 @@ _srr0_not_in_disableintr:
     sth r4, ctx->state
     lmw r5, ctx->gprs[5]
     b _load_special_regs
-    
+
 _load_saved_gprs:
     lmw r13, ctx->gprs[13]
-    
+
 _load_special_regs:
     lwz r4, ctx->gqrs[1]
     mtgqr1 r4
@@ -417,7 +426,7 @@ asm void OSInitContext(register OSContext* ctx, register void* _srr0,
                        register void* stack) {
     // clang-format off
     nofralloc
-    
+
     stw _srr0, ctx->srr0
     stw stack, ctx->gprs[1]
 
@@ -539,9 +548,9 @@ static asm void OSSwitchFPUContext(register u8 err, register OSContext* ctx) {
     mfmsr r5
     ori r5, r5, MSR_FP
     mtmsr r5
-    
+
     isync
-    
+
     lwz r5, ctx->srr1
     ori r5, r5, 0x2000
     mtsrr1 r5
@@ -585,5 +594,4 @@ _ctx_is_curr_fpu_ctx:
 void __OSContextInit(void) {
     __OSSetExceptionHandler(OS_ERR_FP_UNAVAIL, OSSwitchFPUContext);
     OS_CURRENT_FPU_CONTEXT = NULL;
-    DBPrintf("FPU-unavailable handler installed\n");
 }
