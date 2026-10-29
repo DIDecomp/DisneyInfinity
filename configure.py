@@ -315,7 +315,7 @@ config.libs = [
         Object(NonMatching, "revolution/OS/OSFatal.c"),
         Object(NonMatching, "revolution/OS/OSFont.c"),
         Object(NonMatching, "revolution/OS/OSInterrupt.c"),
-        Object(NonMatching, "revolution/OS/OSLink.c"),
+        Object(Matching, "revolution/OS/OSLink.c"),
     ]),
 ]
 
