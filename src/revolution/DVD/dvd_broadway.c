@@ -326,7 +326,7 @@ static inline DVDLowContext* newContext(DVDLowCallback callback, UNKWORD arg2) {
     return &dvdContexts[id];
 }
 
-BOOL DVDLowOpenPartition(u32 offset, const ESPTicket* ticket, u32 certsSize,
+BOOL DVDLowOpenPartition(u32 offset, const ESTicket* ticket, u32 certsSize,
                          const void* certs, ESPTmd* tmd,
                          DVDLowCallback callback) {
     DVDLowContext* ctx;

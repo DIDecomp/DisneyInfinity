@@ -13,6 +13,64 @@ Sections:
 	.data       type:data align:64
 	.bss        type:bss align:4096
 
+revolution/OS/OS.c:
+	.text       start:0x803AC540 end:0x803ADA20
+	.sbss       start:0x804BCF50 end:0x804BCF98
+	.data       start:0x804DC040 end:0x804DC450
+	.bss        start:0x80571E00 end:0x80571E70
+
+revolution/OS/OSAlarm.c:
+	.text       start:0x803ADA20 end:0x803AE2F0
+	.sbss       start:0x804BCF98 end:0x804BCFA0
+	.data       start:0x804DC450 end:0x804DC460
+
+revolution/OS/OSArena.c:
+	.text       start:0x803AE2F0 end:0x803AE3F0
+	.sdata      start:0x804BC250 end:0x804BC258
+	.sbss       start:0x804BCFA0 end:0x804BCFA8
+
+revolution/OS/OSAudioSystem.c:
+	.text       start:0x803AE3F0 end:0x803AE8B0
+	.data       start:0x804DC460 end:0x804DC4E0
+
+revolution/OS/OSCache.c:
+	.text       start:0x803AE8B0 end:0x803AECD0
+	.data       start:0x804DC4E0 end:0x804DC668
+
+revolution/OS/OSContext.c:
+	.text       start:0x803AECD0 end:0x803AF5B0
+	.data       start:0x804DC668 end:0x804DC820
+
+revolution/OS/OSError.c:
+	.text       start:0x803AF5B0 end:0x803AFCF0
+	.sdata      start:0x804BC258 end:0x804BC260
+	.data       start:0x804DC820 end:0x804DCB00
+	.bss        start:0x80571E70 end:0x80571EC0
+
+revolution/OS/OSExec.c:
+	.text       start:0x803AFCF0 end:0x803B1440
+	.sbss       start:0x804BCFA8 end:0x804BCFC0
+	.bss        start:0x80571EC0 end:0x80571EE0
+
+revolution/OS/__start.c:
+	.init       start:0x80480000 end:0x80480360
+	.sbss       start:0x804BD040 end:0x804BD048
+
+revolution/OS/OSFatal.c:
+	.text       start:0x803B1440 end:0x803B2070
+	.sdata2     start:0x80485898 end:0x804858D8
+	.sdata      start:0x804BC260 end:0x804BC268
+	.bss        start:0x80571EE0 end:0x805721C0
+
+revolution/OS/OSFont.c:
+	.text       start:0x803B2070 end:0x803B3350
+
+revolution/OS/OSInterrupt.c:
+	.text       start:0x803B3350 end:0x803B3B20
+
+revolution/OS/OSLink.c:
+	.text       start:0x803B4550 end:0x803B4570
+
 Runtime.PPCEABI.H/global_destructor_chain.c:
 	.text       start:0x80460B24 end:0x80460B84
 	.sbss       start:0x804BD708 end:0x804BD710

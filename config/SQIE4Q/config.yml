@@ -9,8 +9,8 @@ ldscript_template: config/SQIE4Q/ldscript.lcf
 # See config.example.yml for a list.
 mw_comment_version: 14
 
-modules:
-- object: files/gamerel.consumer.wii.rel
-  hash: f21a11f6f4e287198fc138b70a1edb54776275db
-  symbols: config/SQIE4Q/gamerel.consumer.wii.rel/symbols.txt
-  splits: config/SQIE4Q/gamerel.consumer.wii.rel/splits.txt
+# modules:
+# - object: files/gamerel.consumer.wii.rel
+#   hash: f21a11f6f4e287198fc138b70a1edb54776275db
+#   symbols: config/SQIE4Q/gamerel.consumer.wii.rel/symbols.txt
+#   splits: config/SQIE4Q/gamerel.consumer.wii.rel/splits.txt

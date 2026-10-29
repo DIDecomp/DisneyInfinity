@@ -24,4 +24,6 @@ FORCEACTIVE
     $FORCEACTIVE
     __init_cpp_exceptions_reference
     __fini_cpp_exceptions_reference
+    __check_pad3
+    DCStoreRangeNoSync
 }

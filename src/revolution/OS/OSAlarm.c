@@ -1,3 +1,6 @@
+#include "revolution/OS/OSAlarm.h"
+#include "revolution/OS/OSInterrupt.h"
+#include "stddef.h"
 #include <revolution/BASE.h>
 #include <revolution/DVD.h>
 #include <revolution/OS.h>
@@ -249,3 +252,34 @@ void OSSetAlarmUserData(OSAlarm* alarm, void* userData) {
 }
 
 void* OSGetAlarmUserData(const OSAlarm* alarm) { return alarm->userData; }
+
+void __OSSetInternalAlarmUserData(OSAlarm *alarm, void* userData) {
+    alarm->userData = userData;
+    alarm->tag = -1;
+}
+
+void __OSCancelInternalAlarms(void* data) {
+    BOOL enabled = OSDisableInterrupts();
+    OSAlarm* head = AlarmQueue.head;
+    OSAlarm* next;
+
+    if (head != NULL) {
+        next = AlarmQueue.head->next;
+    } else {
+        next = NULL;
+    }
+
+    while (head != NULL) {
+        if (head->tag == -1 && head->userData == data) {
+            OSCancelAlarm(head);
+        }
+        head = next;
+        if (next) {
+            next = head->next;
+        } else {
+            next = NULL;
+        }
+    }
+
+    OSRestoreInterrupts(enabled);
+}

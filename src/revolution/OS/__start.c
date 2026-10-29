@@ -11,7 +11,7 @@ int main(int argc, char** argv);
 DECL_SECTION(".init") static void __init_registers(void);
 DECL_SECTION(".init") static void __init_data(void);
 
-DECL_SECTION(".init") static void __check_pad3(void) {
+DECL_SECTION(".init") void __check_pad3(void) {
     if ((OS_GC_PAD_3_BTN & 0x0EEF) == 0x0EEF) {
         OSResetSystem(0, 0, 0);
     }
@@ -27,6 +27,8 @@ asm void __start(void) {
 
     // Setup hardware
     bl __init_registers
+    // Setup ROM/BSS
+    bl __init_data
     bl __init_hardware
 
     // Create first stack frame
@@ -37,9 +39,6 @@ asm void __start(void) {
     stw r0, 4(r1)
     // Back chain (-1 to signify first frame)
     stw r0, 0(r1)
-
-    // Setup ROM/BSS
-    bl __init_data
 
     // Clear debugger exception mask
     li r0, 0
@@ -52,7 +51,7 @@ asm void __start(void) {
      *
      * This can be done by either checking the value from the DVD
      * (OSBI2.debugFlag), or by checking the global OS_BI2_DEBUG_FLAG.
-     * 
+     *
      * If the DVD BI2 is available, it is prioritized over the global value.
      */
     lis r6, OS_DVD_BI2@ha
@@ -102,7 +101,7 @@ _no_dvd_bi2:
      * - BI2 Level 4 -> ID 2 (BBA)
      */
 _handle_bi2_debug_flag:
-    // BI2 Debug Level 3: Init TRK as GDEV hardware 
+    // BI2 Debug Level 3: Init TRK as GDEV hardware
     li r5, 0
     cmplwi r7, 2
     beq _call_init_metro_trk
@@ -242,7 +241,6 @@ _no_args:
      */
 _init_os:
     // Initialize the OS and its debug monitor
-    bl DBInit
     bl OSInit
 
     // Load DVD device code address
@@ -279,27 +277,51 @@ _after_init_metro_trk_bba:
     mr r3, r14
     mr r4, r15
     bl main
-    b __fini_cpp // <- Will halt CPU
+    b exit // <- Will halt CPU
     // clang-format on
 }
 
-DECL_SECTION(".init")
-static void __copy_rom_section(void* dst, const void* src, size_t size) {
-    if (size == 0 || dst == src) {
-        return;
-    }
+// DECL_SECTION(".init")
+// static void __copy_rom_section(void* dst, const void* src, size_t size) {
+//     if (size == 0 || dst == src) {
+//         return;
+//     }
 
-    memcpy(dst, src, size);
-    __flush_cache(dst, size);
-}
+//     memcpy(dst, src, size);
+//     __flush_cache(dst, size);
+// }
 
-DECL_SECTION(".init")
-static void __init_bss_section(void* dst, size_t size) {
-    if (size == 0) {
-        return;
-    }
+// DECL_SECTION(".init")
+// static void __init_bss_section(void* dst, int value, size_t size) {
+//     if (size == 0) {
+//         return;
+//     }
 
-    memset(dst, 0, size);
+//     memset(dst, value, size);
+// }
+
+DECL_SECTION(".init") static asm void __my_flush_cache(void* dst, size_t size)
+{
+    // clang-format off
+    cmplwi    r4,0
+    blelr
+    clrlwi    r5,r3,27
+    add       r4,r4,r5
+    addi      r4,r4,0x1F
+    srwi      r4,r4,5
+    mtctr     r4
+_flush_cache_loop:
+    dcbf      r0,r3
+    addi      r3,r3,0x20
+    bdnz      _flush_cache_loop
+    mfspr     r6,HID0
+    ori       r7,r6,0x8
+    mtspr     HID0,r7
+    isync
+    sync
+    mtspr     HID0,r6
+    blr
+    // clang-format on
 }
 
 DECL_SECTION(".init") static asm void __init_registers(void) {
@@ -347,27 +369,62 @@ DECL_SECTION(".init") static asm void __init_registers(void) {
     // clang-format on
 }
 
-DECL_SECTION(".init") static void __init_data(void) {
-    const RomSection* rs;
-    const BssSection* bs;
-
-    rs = _rom_copy_info;
-    while (TRUE) {
-        if (rs->size == 0) {
-            break;
-        }
-
-        __copy_rom_section(rs->virtualOfs, rs->romOfs, rs->size);
-        rs++;
-    }
-
-    bs = _bss_init_info;
-    while (TRUE) {
-        if (bs->size == 0) {
-            break;
-        }
-
-        __init_bss_section(bs->virtualOfs, bs->size);
-        bs++;
-    }
+DECL_SECTION(".init") asm void __init_data(void) {
+    // clang-format off
+    #ifdef __MWERKS__
+    stwu    r1,-0x20(r1)
+    mflr    r0
+    stw     r0,0x24(r1)
+    stw     r31,0x1c(r1)
+    stw     r30,0x18(r1)
+    stw     r29,0x14(r1)
+    lis     r29,_rom_copy_info@ha
+    addi    r29,r29,_rom_copy_info@l
+_rom_loop:
+    lwz     r30,8(r29)
+    cmpwi   r30,0
+    beq     _assign_bss
+    lwz     r4,0(r29)
+    lwz     r31,4(r29)
+    beq     _rom_increment
+    cmplw   r31,r4
+    beq     _rom_increment
+    mr      r3,r31
+    mr      r5,r30
+    bl      memcpy
+    mr      r3,r31
+    mr      r4,r30
+    bl      __flush_cache
+_rom_increment:
+    addi    r29,r29,0xc
+    b       _rom_loop
+_assign_bss:
+    lis     r29,_bss_init_info@ha
+    addi    r29,r29,_bss_init_info@l
+_bss_loop:
+    lwz     r30,4(r29)
+    cmpwi   r30,0
+    beq     _cleanup
+    lwz     r31,0(r29)
+    beq     _bss_increment
+    mr      r3,r31
+    mr      r5,r30
+    li      r4,0
+    bl      memset
+    mr      r3,r31
+    mr      r4,r30
+    bl      __my_flush_cache
+_bss_increment:
+    addi    r29,r29,8
+    b       _bss_loop
+_cleanup:
+    lwz     r0,0x24(r1)
+    lwz     r31,0x1c(r1)
+    lwz     r30,0x18(r1)
+    lwz     r29,0x14(r1)
+    mtlr    r0
+    addi    r1,r1,0x20
+    blr
+    #endif
+    // clang-format on
 }

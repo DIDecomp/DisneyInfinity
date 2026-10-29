@@ -5,7 +5,7 @@
 asm void DCEnable(void) {
     // clang-format off
     nofralloc
-    
+
     sync
     mfhid0 r3
     ori r3, r3, 0x4000
@@ -18,9 +18,9 @@ asm void DCEnable(void) {
 asm void DCInvalidateRange(register const void* buf, register u32 len) {
     // clang-format off
     nofralloc
-    
+
     cmplwi len, 0
-    blelr 
+    blelr
 
     clrlwi r5, buf, 27
     add len, len, r5
@@ -40,9 +40,9 @@ do_invalidate:
 asm void DCFlushRange(register const void* buf, register u32 len) {
     // clang-format off
     nofralloc
-    
+
     cmplwi len, 0
-    blelr 
+    blelr
 
     clrlwi r5, buf, 27
     add len, len, r5
@@ -63,9 +63,9 @@ do_flush:
 asm void DCStoreRange(register const void* buf, register u32 len) {
     // clang-format off
     nofralloc
-    
+
     cmplwi len, 0
-    blelr 
+    blelr
 
     clrlwi r5, buf, 27
     add len, len, r5
@@ -86,9 +86,9 @@ do_store:
 asm void DCFlushRangeNoSync(register const void* buf, register u32 len) {
     // clang-format off
     nofralloc
-    
+
     cmplwi len, 0
-    blelr 
+    blelr
 
     clrlwi r5, buf, 27
     add len, len, r5
@@ -108,9 +108,9 @@ do_flush:
 asm void DCStoreRangeNoSync(register const void* buf, register u32 len) {
     // clang-format off
     nofralloc
-    
+
     cmplwi len, 0
-    blelr 
+    blelr
 
     clrlwi r5, buf, 27
     add len, len, r5
@@ -130,9 +130,9 @@ do_store:
 asm void DCZeroRange(register const void* buf, register u32 len) {
     // clang-format off
     nofralloc
-    
+
     cmplwi len, 0
-    blelr 
+    blelr
 
     clrlwi r5, buf, 27
     add len, len, r5
@@ -152,9 +152,9 @@ do_zero:
 asm void ICInvalidateRange(register const void* buf, register u32 len) {
     // clang-format off
     nofralloc
-    
+
     cmplwi len, 0
-    blelr 
+    blelr
 
     clrlwi r5, buf, 27
     add len, len, r5
@@ -166,7 +166,7 @@ do_invalidate:
     icbi 0, buf
     addi buf, buf, 32
     bdnz do_invalidate
-    
+
     sync
     isync
 
@@ -177,7 +177,7 @@ do_invalidate:
 asm void ICFlashInvalidate(void) {
     // clang-format off
     nofralloc
-    
+
     mfhid0 r3
     ori r3, r3, 0x800
     mthid0 r3
@@ -219,7 +219,7 @@ do_store:
     mfspr r4, 0x398
     oris r4, r4, 0x100F
     mtspr 0x398, r4
-    
+
     nop
     nop
     nop
@@ -232,7 +232,7 @@ do_store:
     nop
     nop
     nop
-    
+
     lis r3, 0xE0000002@h
     ori r3, r3, 0xE0000002@l
     mtdbatl 3, r3
@@ -248,7 +248,7 @@ do_load:
     dcbz_l r6, r3
     addi r3, r3, 32
     bdnz do_load
-    
+
     nop
     nop
     nop
@@ -261,7 +261,7 @@ do_load:
     nop
     nop
     nop
-    
+
     blr
     // clang-format on
 }
@@ -275,7 +275,7 @@ void LCEnable(void) {
 asm void LCDisable(void) {
     // clang-format off
     nofralloc
-    
+
     lis r3, 0xE0000000@ha
     li r4, 512
     mtctr r4
@@ -283,7 +283,7 @@ do_invalidate:
     dcbi 0, r3
     addi r3, r3, 32
     bdnz do_invalidate
-    
+
     mfspr r4, 0x398
     rlwinm r4, r4, 0, 4, 2
     mtspr 0x398, r4
@@ -414,7 +414,6 @@ void L2GlobalInvalidate(void) {
     PPCMtl2cr(l2cr & ~L2CR_L2I);
 
     while (PPCMfl2cr() & L2CR_L2IP) {
-        DBPrintf(">>> L2 INVALIDATE : SHOULD NEVER HAPPEN\n");
     }
 }
 
@@ -454,20 +453,16 @@ void DMAErrorHandler(u8 error, OSContext* ctx, u32 dsisr, u32 dar, ...) {
 void __OSCacheInit(void) {
     if (!(PPCMfhid0() & HID0_ICE)) {
         ICEnable();
-        DBPrintf("L1 i-caches initialized\n");
     }
 
     if (!(PPCMfhid0() & HID0_DCE)) {
         DCEnable();
-        DBPrintf("L1 d-caches initialized\n");
     }
 
     if (!(PPCMfl2cr() & L2CR_L2E)) {
         L2Init();
         L2Enable();
-        DBPrintf("L2 cache initialized\n");
     }
 
     OSSetErrorHandler(OS_ERR_MACHINE_CHECK, DMAErrorHandler);
-    DBPrintf("Locked cache machine check handler installed\n");
 }

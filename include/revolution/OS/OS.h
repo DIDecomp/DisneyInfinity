@@ -61,6 +61,15 @@ typedef struct OSIOSRev {
     u16 buildYear; // at 0x6
 } OSIOSRev;
 
+#define OSRoundUp32B(x) (((u32)(x) + 32 - 1) & ~(32 - 1))
+#define OSRoundDown32B(x) (((u32)(x)) & ~(32 - 1))
+
+#define OS_CACHED_REGION_PREFIX 0x8000
+#define OS_UNCACHED_REGION_PREFIX 0xC000
+
+#define OS_BASE_CACHED (OS_CACHED_REGION_PREFIX << 16)
+#define OS_BASE_UNCACHED (OS_UNCACHED_REGION_PREFIX << 16)
+
 typedef void (*OSExceptionHandler)(u8 type, OSContext* ctx);
 
 extern BOOL __OSInIPL;
