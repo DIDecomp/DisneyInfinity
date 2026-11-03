@@ -170,7 +170,7 @@ static void Callback(u32 intType) {
     DVDLowIntType = intType;
 }
 
-void CheckDVDLowIntType(int param_0) {
+static void CheckDVDLowIntType(int param_0) {
     switch (param_0) {
     case 2:
         OSReport("\nDisc error occurred!\n");

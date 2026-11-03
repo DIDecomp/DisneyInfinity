@@ -54,7 +54,7 @@ OSErrorHandler OSSetErrorHandler(u16 error, OSErrorHandler handler) {
         if (handler != NULL) {
             int i;
             for (thread = OS_THREAD_QUEUE.head; thread != NULL;
-                 thread = thread->nextActive) {
+                 thread = thread->linkActive.next) {
                 thread->context.srr1 |= 0x900;
 
                 if (!(thread->context.state & 0x1)) {
@@ -81,7 +81,7 @@ OSErrorHandler OSSetErrorHandler(u16 error, OSErrorHandler handler) {
             msr |= (MSR_FE0 | MSR_FE1);
         } else {
             for (thread = OS_THREAD_QUEUE.head; thread != NULL;
-                 thread = thread->nextActive) {
+                 thread = thread->linkActive.next) {
                 thread->context.srr1 &= ~0x900;
                 thread->context.fpscr &=
                     ~(FPSCR_VE | FPSCR_OE | FPSCR_UE | FPSCR_ZE | FPSCR_XE);

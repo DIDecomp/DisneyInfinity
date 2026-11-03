@@ -253,7 +253,7 @@ config.linker_version = "Wii/1.7"
 
 
 # Helper function for Dolphin libraries
-def DolphinLib(lib_name: str, objects: List[Object]) -> Dict[str, Any]:
+def DolphinLibWii(lib_name: str, objects: List[Object]) -> Dict[str, Any]:
     return {
         "lib": lib_name,
         "mw_version": "Wii/1.0",
@@ -261,7 +261,14 @@ def DolphinLib(lib_name: str, objects: List[Object]) -> Dict[str, Any]:
         "progress_category": "sdk",
         "objects": objects,
     }
-
+def DolphinLibGC(lib_name: str, objects: List[Object]) -> Dict[str, Any]:
+    return {
+        "lib": lib_name,
+        "mw_version": "GC/3.0a5.2",
+        "cflags": [*cflags_base, "-func_align 16"],
+        "progress_category": "sdk",
+        "objects": objects,
+    }
 
 # Helper function for REL script objects
 def Rel(lib_name: str, objects: List[Object]) -> Dict[str, Any]:
@@ -301,7 +308,7 @@ config.libs = [
     #   next TU to be unpadded.
     # __ppc_eabi_init & OS.c is true nonmatching
     # OSCache is dropping DCZeroRange for seemingly no reason, even with FORCEACTIVE
-    DolphinLib("OS", [
+    DolphinLibWii("OS", [
         Object(NonMatching, "revolution/OS/__start.c"),
         Object(NonMatching, "revolution/OS/__ppc_eabi_init.c"),
         Object(NonMatching, "revolution/OS/OS.c"),
@@ -315,8 +322,30 @@ config.libs = [
         Object(NonMatching, "revolution/OS/OSFatal.c"),
         Object(NonMatching, "revolution/OS/OSFont.c"),
         Object(NonMatching, "revolution/OS/OSInterrupt.c"),
-        Object(Matching, "revolution/OS/OSLink.c"),
+        Object(NonMatching, "revolution/OS/OSLink.c"),
+        Object(Matching, "revolution/OS/OSMessage.c"),
+        Object(NonMatching, "revolution/OS/OSMemory.c"),
+        Object(Matching, "revolution/OS/OSMutex.c"),
+        Object(Matching, "revolution/OS/OSReboot.c"),
+        Object(NonMatching, "revolution/OS/OSReset.c"),
+        Object(Matching, "revolution/OS/OSRtc.c"),
+        Object(NonMatching, "revolution/OS/OSSemaphore.c"),
+        Object(Matching, "revolution/OS/OSSync.c"),
+        Object(NonMatching, "revolution/OS/OSThread.c"),
+        Object(Matching, "revolution/OS/OSTime.c"),
+        Object(Matching, "revolution/OS/OSIpc.c"),
+        Object(Matching, "revolution/OS/OSStateTM.c"),
+        Object(Matching, "revolution/OS/time.dolphin.c"),
+        Object(NonMatching, "revolution/OS/OSPlayRecord.c"),
+        Object(Matching, "revolution/OS/OSStateFlags.c"),
+        Object(Matching, "revolution/OS/OSNet.c"),
     ]),
+    DolphinLibGC("OS", [
+        Object(Matching, "revolution/OS/OSUtf.c"),
+    ]),
+    DolphinLibWii("NWC24", [
+        Object(NonMatching, "revolution/NWC24/NWC24System.c"),
+    ])
 ]
 
 

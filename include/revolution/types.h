@@ -9,7 +9,7 @@
 #include <stddef.h>
 #endif
 
-#include "revolution/macros.h"
+#include "macros.h"
 
 typedef signed char s8;
 typedef signed short s16;

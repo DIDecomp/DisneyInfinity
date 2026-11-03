@@ -48,15 +48,7 @@ static BOOL ReadSram(OSScb* scb) {
     return error == FALSE;
 }
 
-static void WriteSramCallback(EXIChannel chan, OSContext* ctx) {
-#pragma unused(chan)
-#pragma unused(ctx)
-
-    Scb.sync = WriteSram(Scb.block + Scb.pos, Scb.pos, OS_SRAM_SIZE - Scb.pos);
-    if (Scb.sync) {
-        Scb.pos = OS_SRAM_SIZE;
-    }
-}
+static void WriteSramCallback(EXIChannel chan, OSContext* ctx);
 
 static BOOL WriteSram(const void* src, u32 pos, s32 size) {
     u32 imm;
@@ -81,12 +73,14 @@ static BOOL WriteSram(const void* src, u32 pos, s32 size) {
     return error == FALSE;
 }
 
-void __OSInitSram(void) {
-    Scb.enabled = FALSE;
-    Scb.locked = FALSE;
-    Scb.sync = ReadSram(&Scb);
-    Scb.pos = OS_SRAM_SIZE;
-    OSSetGbsMode(OSGetGbsMode());
+static void WriteSramCallback(EXIChannel chan, OSContext* ctx) {
+#pragma unused(chan)
+#pragma unused(ctx)
+
+    Scb.sync = WriteSram(Scb.block + Scb.pos, Scb.pos, OS_SRAM_SIZE - Scb.pos);
+    if (Scb.sync) {
+        Scb.pos = OS_SRAM_SIZE;
+    }
 }
 
 static void* LockSram(u32 pos) {
@@ -106,6 +100,44 @@ static void* LockSram(u32 pos) {
 }
 
 OSSramEx* __OSLockSramEx(void) { return (OSSramEx*)LockSram(sizeof(OSSram)); }
+
+static BOOL UnlockSram(BOOL save, u32 pos);
+BOOL __OSUnlockSramEx(BOOL save) { return UnlockSram(save, sizeof(OSSram)); }
+
+u16 OSGetGbsMode(void) {
+    OSSramEx* sram;
+    u16 gbs;
+
+    sram = __OSLockSramEx();
+    gbs = sram->gbs;
+    __OSUnlockSramEx(FALSE);
+
+    return gbs;
+}
+
+void OSSetGbsMode(u16 gbs) {
+    OSSramEx* sram;
+
+    if (((u32)gbs & 0x7C00) == 0x5000 || ((u32)gbs & 0xC0) == 0xC0) {
+        gbs = 0;
+    }
+
+    sram = __OSLockSramEx();
+    if (gbs == sram->gbs) {
+        __OSUnlockSramEx(FALSE);
+    } else {
+        sram->gbs = gbs;
+        __OSUnlockSramEx(TRUE);
+    }
+}
+
+void __OSInitSram(void) {
+    Scb.enabled = FALSE;
+    Scb.locked = FALSE;
+    Scb.sync = ReadSram(&Scb);
+    Scb.pos = OS_SRAM_SIZE;
+    OSSetGbsMode(OSGetGbsMode());
+}
 
 static BOOL UnlockSram(BOOL save, u32 pos) {
     u16* data;
@@ -151,8 +183,6 @@ static BOOL UnlockSram(BOOL save, u32 pos) {
     OSRestoreInterrupts(Scb.enabled);
     return Scb.sync;
 }
-
-BOOL __OSUnlockSramEx(BOOL save) { return UnlockSram(save, sizeof(OSSram)); }
 
 BOOL __OSSyncSram(void) { return Scb.sync; }
 
@@ -205,33 +235,6 @@ void OSSetWirelessID(s32 pad, u16 id) {
     }
 }
 
-u16 OSGetGbsMode(void) {
-    OSSramEx* sram;
-    u16 gbs;
-
-    sram = __OSLockSramEx();
-    gbs = sram->gbs;
-    __OSUnlockSramEx(FALSE);
-
-    return gbs;
-}
-
-void OSSetGbsMode(u16 gbs) {
-    OSSramEx* sram;
-
-    if (((u32)gbs & 0x7C00) == 0x5000 || ((u32)gbs & 0xC0) == 0xC0) {
-        gbs = 0;
-    }
-
-    sram = __OSLockSramEx();
-    if (gbs == sram->gbs) {
-        __OSUnlockSramEx(FALSE);
-    } else {
-        sram->gbs = gbs;
-        __OSUnlockSramEx(TRUE);
-    }
-}
-
 BOOL __OSGetRTCFlags(u32* out) {
     u32 imm;
     BOOL error = FALSE;
@@ -248,7 +251,7 @@ BOOL __OSGetRTCFlags(u32* out) {
     imm = 0x21000800;
     error |= !EXIImm(EXI_CHAN_0, &imm, sizeof(imm), EXI_WRITE, NULL);
     error |= !EXISync(EXI_CHAN_0);
-    error |= !EXIDma(EXI_CHAN_0, &imm, sizeof(imm), EXI_READ, NULL);
+    error |= !EXIImm(EXI_CHAN_0, &imm, sizeof(imm), EXI_READ, NULL);
     error |= !EXISync(EXI_CHAN_0);
     error |= !EXIDeselect(EXI_CHAN_0);
     EXIUnlock(EXI_CHAN_0);
@@ -274,7 +277,7 @@ BOOL __OSClearRTCFlags(void) {
     imm = 0xA1000800;
     error |= !EXIImm(EXI_CHAN_0, &imm, sizeof(imm), EXI_WRITE, NULL);
     error |= !EXISync(EXI_CHAN_0);
-    error |= !EXIDma(EXI_CHAN_0, &flags, sizeof(flags), EXI_WRITE, NULL);
+    error |= !EXIImm(EXI_CHAN_0, &flags, sizeof(flags), EXI_WRITE, NULL);
     error |= !EXISync(EXI_CHAN_0);
     error |= !EXIDeselect(EXI_CHAN_0);
     EXIUnlock(EXI_CHAN_0);

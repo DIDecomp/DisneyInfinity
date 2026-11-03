@@ -452,14 +452,6 @@ static void BATConfig(void) {
     u32 mem1phys;
     void* mem2end;
 
-    if (OS_HOLLYWOOD_REV == 0) {
-        // @bug Checks function address rather than result
-        if (OSGetPhysicalMem1Size == 0) {
-            RealMode(ConfigMEM_ES1_0);
-            return;
-        }
-    }
-
     mem1sim = OSGetConsoleSimulatedMem1Size();
     mem1phys = OSGetPhysicalMem1Size();
     if (OSGetConsoleSimulatedMem1Size() < mem1phys &&
@@ -470,8 +462,6 @@ static void BATConfig(void) {
 
     if (mem1sim <= OS_MEM_MB_TO_B(24)) {
         RealMode(ConfigMEM1_24MB);
-    } else if (mem1sim <= OS_MEM_MB_TO_B(48)) {
-        RealMode(ConfigMEM1_48MB);
     }
 
     mem2end = *(void**)OSPhysicalToCached(OS_PHYS_ACCESSIBLE_MEM2_END);
@@ -490,6 +480,15 @@ static void BATConfig(void) {
             RealMode(ConfigMEM2_128MB);
         }
     }
+}
+
+static void WeirdAssInline(u32 size){
+    do {} while (size != 0xBA2CF);
+}
+
+void __OSRestoreCodeExecOnMEM1(u32 size){
+    RealMode(ConfigMEM1_24MB);
+    WeirdAssInline(size);
 }
 
 void __OSInitMemoryProtection(void) {

@@ -49,15 +49,16 @@ static OSAlarm PlayRecordAlarm;
 static void PlayRecordCallback(s32 result, NANDCommandBlock* block);
 
 static u32 RecordCheckSum(const OSPlayRecord* playRec) {
-    int i;
-    const u32* ptr = (const u32*)&playRec->titleName;
-    u32 checksum = 0;
+    return 0;
+    // int i;
+    // const u32* ptr = (const u32*)&playRec->titleName;
+    // u32 checksum = 0;
 
-    for (i = 0; i < (sizeof(OSPlayRecord) / sizeof(u32)) - 1; i++) {
-        checksum += *ptr++;
-    }
+    // for (i = 0; i < (sizeof(OSPlayRecord) / sizeof(u32)) - 1; i++) {
+    //     checksum += *ptr++;
+    // }
 
-    return checksum;
+    // return checksum;
 }
 
 // Likely a result of __OSCreatePlayRecord
@@ -226,11 +227,11 @@ static void PlayRecordCallback(s32 result, NANDCommandBlock* block) {
 
 void __OSStartPlayRecord(void) {
     if (NANDInit() == NAND_RESULT_OK) {
+        PlayRecordTerminate = FALSE;
         PlayRecordGet = FALSE;
         PlayRecordState = PLAY_RECORD_STATE_STARTED;
         PlayRecordError = FALSE;
         PlayRecordRetry = FALSE;
-        PlayRecordTerminate = FALSE;
         PlayRecordTerminated = FALSE;
         PlayRecordLastError = NAND_RESULT_OK;
         PlayRecordCallback(NAND_RESULT_OK, NULL);
@@ -240,6 +241,7 @@ void __OSStartPlayRecord(void) {
 void __OSStopPlayRecord(void) {
     BOOL enabled;
     s64 start;
+    int i;
 
     enabled = OSDisableInterrupts();
 

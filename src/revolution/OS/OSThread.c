@@ -1,3 +1,6 @@
+#include "revolution/OS/OSThread.h"
+#include "revolution/OS/OS.h"
+#include "revolution/OS/OSAlarm.h"
 #include <revolution/OS.h>
 
 static void DefaultSwitchThreadCallback(OSThread* currThread,
@@ -33,6 +36,26 @@ OSSwitchThreadCallback OSSetSwitchThreadCallback(OSSwitchThreadCallback newCb) {
     return (oldCb == DefaultSwitchThreadCallback) ? NULL : oldCb;
 }
 
+void OSSetCurrentThread(OSThread* thread) {
+    SwitchThreadCallback(OSGetCurrentThread(), thread);
+    OS_CURRENT_THREAD = thread;
+}
+
+void OSClearStack(u8 val) {
+    u32* end;
+    u32* begin;
+    u32 longVal;
+
+    longVal = val << 24 | val << 16 | val << 8 | val;
+
+    begin = (u32*)OSGetStackPointer();
+    end = OSGetCurrentThread()->stackEnd + 1;
+
+    for (; end < (u32*)begin; end++) {
+        *end = longVal;
+    }
+}
+
 void __OSThreadInit(void) {
     int i;
     OSThread* thread = &DefaultThread;
@@ -46,8 +69,8 @@ void __OSThreadInit(void) {
     thread->val = 0xFFFFFFFF;
     thread->mutex = NULL;
 
-    OSInitThreadQueue(&thread->joinQueue);
-    OSInitMutexQueue(&thread->mutexQueue);
+    OSInitThreadQueue(&thread->queueJoin);
+    OSInitMutexQueue(&thread->queueMutex);
 
     OS_CURRENT_FPU_CONTEXT = &thread->context;
     OSClearContext(&thread->context);
@@ -72,20 +95,15 @@ void __OSThreadInit(void) {
     if (tail == NULL) {
         OS_THREAD_QUEUE.head = thread;
     } else {
-        tail->nextActive = thread;
+        tail->linkActive.next = thread;
     }
 
-    thread->prevActive = tail;
-    thread->nextActive = NULL;
+    thread->linkActive.prev = tail;
+    thread->linkActive.next = NULL;
     OS_THREAD_QUEUE.tail = thread;
 
     OSClearContext(&IdleContext);
     Reschedule = 0;
-}
-
-void OSSetCurrentThread(OSThread* thread) {
-    SwitchThreadCallback(OSGetCurrentThread(), thread);
-    OS_CURRENT_THREAD = thread;
 }
 
 void OSInitMutexQueue(OSMutexQueue* queue) {
@@ -120,7 +138,7 @@ static BOOL __OSIsThreadActive(OSThread* thread) {
         return FALSE;
     }
 
-    for (iter = OS_THREAD_QUEUE.head; iter != NULL; iter = iter->nextActive) {
+    for (iter = OS_THREAD_QUEUE.head; iter != NULL; iter = iter->linkActive.next) {
         if (thread == iter) {
             return TRUE;
         }
@@ -151,21 +169,6 @@ s32 OSEnableScheduler(void) {
     return old;
 }
 
-void OSClearStack(u8 val) {
-    u32* end;
-    u32* begin;
-    u32 longVal;
-
-    longVal = val << 24 | val << 16 | val << 8 | val;
-
-    begin = (u32*)OSGetStackPointer();
-    end = OSGetCurrentThread()->stackEnd + 1;
-
-    for (; end < (u32*)begin; end++) {
-        *end = longVal;
-    }
-}
-
 static void SetRun(OSThread* thread) {
     OSThreadQueue* queue;
     OSThread* tail;
@@ -177,11 +180,11 @@ static void SetRun(OSThread* thread) {
     if (tail == NULL) {
         thread->queue->head = thread;
     } else {
-        tail->next = thread;
+        tail->link.next = thread;
     }
 
-    thread->prev = tail;
-    thread->next = NULL;
+    thread->link.prev = tail;
+    thread->link.next = NULL;
     thread->queue->tail = thread;
 
     RunQueueBits |= (1 << OS_PRIORITY_MAX - thread->priority);
@@ -193,20 +196,20 @@ static void UnsetRun(OSThread* thread) DONT_INLINE {
     OSThread* next;
     OSThread* prev;
 
-    next = thread->next;
+    next = thread->link.next;
     queue = thread->queue;
-    prev = thread->prev;
+    prev = thread->link.prev;
 
     if (next == NULL) {
         queue->tail = prev;
     } else {
-        next->prev = prev;
+        next->link.prev = prev;
     }
 
     if (prev == NULL) {
         queue->head = next;
     } else {
-        prev->next = next;
+        prev->link.next = next;
     }
 
     if (queue->head == NULL) {
@@ -220,7 +223,7 @@ s32 __OSGetEffectivePriority(OSThread* thread) {
     s32 prio = thread->base;
 
     OSMutex* mutex;
-    for (mutex = thread->mutexQueue.head; mutex != NULL; mutex = mutex->next) {
+    for (mutex = thread->queueMutex.head; mutex != NULL; mutex = mutex->next) {
         OSThread* mutexThread = mutex->queue.head;
         if (mutexThread != NULL && mutexThread->priority < prio) {
             prio = mutexThread->priority;
@@ -244,25 +247,25 @@ static OSThread* SetEffectivePriority(OSThread* thread, s32 prio) {
         SetRun(thread);
         break;
     case OS_THREAD_STATE_SLEEPING:
-        next = thread->next;
-        prev = thread->prev;
+        next = thread->link.next;
+        prev = thread->link.prev;
         if (next == NULL) {
             thread->queue->tail = prev;
         } else {
-            next->prev = prev;
+            next->link.prev = prev;
         }
 
         if (prev == NULL) {
             thread->queue->head = next;
         } else {
-            prev->next = next;
+            prev->link.next = next;
         }
 
         thread->priority = prio;
 
         for (iter = thread->queue->head;
              iter != NULL && iter->priority <= thread->priority;
-             iter = iter->next) {
+             iter = iter->link.next) {
         }
 
         if (iter == NULL) {
@@ -270,21 +273,21 @@ static OSThread* SetEffectivePriority(OSThread* thread, s32 prio) {
             if (iter == NULL) {
                 thread->queue->head = thread;
             } else {
-                iter->next = thread;
+                iter->link.next = thread;
             }
-            thread->prev = iter;
-            thread->next = NULL;
+            thread->link.prev = iter;
+            thread->link.next = NULL;
             thread->queue->tail = thread;
         } else {
-            thread->next = iter;
-            iterPrev = iter->prev;
-            iter->prev = thread;
-            thread->prev = iterPrev;
+            thread->link.next = iter;
+            iterPrev = iter->link.prev;
+            iter->link.prev = thread;
+            thread->link.prev = iterPrev;
 
             if (iterPrev == NULL) {
                 thread->queue->head = thread;
             } else {
-                iterPrev->next = thread;
+                iterPrev->link.next = thread;
             }
         }
 
@@ -400,12 +403,12 @@ static OSThread* SelectThread(BOOL b) {
     prio = __cntlzw(RunQueueBits);
     queue = &RunQueue[prio];
     head = queue->head;
-    next = head->next;
+    next = head->link.next;
 
     if (next == NULL) {
         queue->tail = NULL;
     } else {
-        next->prev = NULL;
+        next->link.prev = NULL;
     }
 
     queue->head = next;
@@ -449,8 +452,8 @@ BOOL OSCreateThread(OSThread* thread, OSThreadFunc func, void* funcArg,
     thread->suspend = 1;
     thread->val = 0xFFFFFFFF;
     thread->mutex = NULL;
-    OSInitThreadQueue(&thread->joinQueue);
-    OSInitMutexQueue(&thread->mutexQueue);
+    OSInitThreadQueue(&thread->queueJoin);
+    OSInitMutexQueue(&thread->queueMutex);
 
     sp = ROUND_DOWN_PTR(stackBegin, 8);
     *((u32*)sp - 2) = 0x00000000;
@@ -486,11 +489,11 @@ BOOL OSCreateThread(OSThread* thread, OSThreadFunc func, void* funcArg,
     if (tail == NULL) {
         OS_THREAD_QUEUE.head = thread;
     } else {
-        tail->nextActive = thread;
+        tail->linkActive.next = thread;
     }
 
-    thread->prevActive = tail;
-    thread->nextActive = NULL;
+    thread->linkActive.prev = tail;
+    thread->linkActive.next = NULL;
     OS_THREAD_QUEUE.tail = thread;
     tail = thread;
 
@@ -509,19 +512,19 @@ void OSExitThread(OSThread* thread) {
     OSClearContext(&currThread->context);
 
     if ((currThread->flags & OS_THREAD_DETACHED)) {
-        next = currThread->nextActive;
-        prev = currThread->prevActive;
+        next = currThread->linkActive.next;
+        prev = currThread->linkActive.prev;
 
         if (next == NULL) {
             OS_THREAD_QUEUE.tail = prev;
         } else {
-            next->prevActive = prev;
+            next->linkActive.prev = prev;
         }
 
         if (prev == NULL) {
             OS_THREAD_QUEUE.head = next;
         } else {
-            prev->nextActive = next;
+            prev->linkActive.next = next;
         }
 
         currThread->state = OS_THREAD_STATE_EXITED;
@@ -531,7 +534,7 @@ void OSExitThread(OSThread* thread) {
     }
 
     __OSUnlockAllMutex(currThread);
-    OSWakeupThread(&currThread->joinQueue);
+    OSWakeupThread(&currThread->queueJoin);
     RunQueueHint = TRUE;
     __OSReschedule();
     OSRestoreInterrupts(enabled);
@@ -543,6 +546,7 @@ void OSCancelThread(OSThread* thread) {
     OSThread* prev;
 
     enabled = OSDisableInterrupts();
+    __OSCancelInternalAlarms(thread);
 
     switch (thread->state) {
     case OS_THREAD_STATE_READY:
@@ -554,18 +558,18 @@ void OSCancelThread(OSThread* thread) {
         RunQueueHint = 1;
         break;
     case OS_THREAD_STATE_SLEEPING:
-        next = thread->next;
-        prev = thread->prev;
+        next = thread->link.next;
+        prev = thread->link.prev;
         if (next == NULL) {
             thread->queue->tail = prev;
         } else {
-            next->prev = prev;
+            next->link.prev = prev;
         }
 
         if (prev == NULL) {
             thread->queue->head = next;
         } else {
-            prev->next = next;
+            prev->link.next = next;
         }
 
         thread->queue = NULL;
@@ -581,19 +585,19 @@ void OSCancelThread(OSThread* thread) {
 
     OSClearContext(&thread->context);
     if (thread->flags & OS_THREAD_DETACHED) {
-        next = thread->nextActive;
-        prev = thread->prevActive;
+        next = thread->linkActive.next;
+        prev = thread->linkActive.prev;
 
         if (next == NULL) {
             OS_THREAD_QUEUE.tail = prev;
         } else {
-            next->prevActive = prev;
+            next->linkActive.prev = prev;
         }
 
         if (prev == NULL) {
             OS_THREAD_QUEUE.head = next;
         } else {
-            prev->nextActive = next;
+            prev->linkActive.next = next;
         }
 
         thread->state = OS_THREAD_STATE_EXITED;
@@ -602,7 +606,7 @@ void OSCancelThread(OSThread* thread) {
     }
 
     __OSUnlockAllMutex(thread);
-    OSWakeupThread(&thread->joinQueue);
+    OSWakeupThread(&thread->queueJoin);
     __OSReschedule();
     OSRestoreInterrupts(enabled);
 }
@@ -616,8 +620,8 @@ BOOL OSJoinThread(OSThread* thread, void* val) {
 
     if (!(thread->flags & OS_THREAD_DETACHED) &&
         thread->state != OS_THREAD_STATE_MORIBUND &&
-        thread->joinQueue.head == NULL) {
-        OSSleepThread(&thread->joinQueue);
+        thread->queueJoin.head == NULL) {
+        OSSleepThread(&thread->queueJoin);
         if (!__OSIsThreadActive(thread)) {
             OSRestoreInterrupts(enabled);
             return FALSE;
@@ -629,19 +633,19 @@ BOOL OSJoinThread(OSThread* thread, void* val) {
             *(u32*)val = thread->val;
         }
 
-        next = thread->nextActive;
-        prev = thread->prevActive;
+        next = thread->linkActive.next;
+        prev = thread->linkActive.prev;
 
         if (next == NULL) {
             OS_THREAD_QUEUE.tail = prev;
         } else {
-            next->prevActive = prev;
+            next->linkActive.prev = prev;
         }
 
         if (prev == NULL) {
             OS_THREAD_QUEUE.head = next;
         } else {
-            prev->nextActive = next;
+            prev->linkActive.next = next;
         }
 
         thread->state = OS_THREAD_STATE_EXITED;
@@ -663,25 +667,25 @@ void OSDetachThread(OSThread* thread) {
     thread->flags |= OS_THREAD_DETACHED;
 
     if (thread->state == OS_THREAD_STATE_MORIBUND) {
-        next = thread->nextActive;
-        prev = thread->prevActive;
+        next = thread->linkActive.next;
+        prev = thread->linkActive.prev;
 
         if (next == NULL) {
             OS_THREAD_QUEUE.tail = prev;
         } else {
-            next->prevActive = prev;
+            next->linkActive.prev = prev;
         }
 
         if (prev == NULL) {
             OS_THREAD_QUEUE.head = next;
         } else {
-            prev->nextActive = next;
+            prev->linkActive.next = next;
         }
 
         thread->state = OS_THREAD_STATE_EXITED;
     }
 
-    OSWakeupThread(&thread->joinQueue);
+    OSWakeupThread(&thread->queueJoin);
     OSRestoreInterrupts(enabled);
 }
 
@@ -705,25 +709,25 @@ s32 OSResumeThread(OSThread* thread) {
             SetRun(thread);
             break;
         case OS_THREAD_STATE_SLEEPING:
-            next = thread->next;
-            prev = thread->prev;
+            next = thread->link.next;
+            prev = thread->link.prev;
             if (next == NULL) {
                 thread->queue->tail = prev;
             } else {
-                next->prev = prev;
+                next->link.prev = prev;
             }
 
             if (prev == NULL) {
                 thread->queue->head = next;
             } else {
-                prev->next = next;
+                prev->link.next = next;
             }
 
             thread->priority = __OSGetEffectivePriority(thread);
 
             for (iter = thread->queue->head;
                  iter != NULL && iter->priority <= thread->priority;
-                 iter = iter->next) {
+                 iter = iter->link.next) {
             }
 
             if (iter == NULL) {
@@ -731,21 +735,21 @@ s32 OSResumeThread(OSThread* thread) {
                 if (iter == NULL) {
                     thread->queue->head = thread;
                 } else {
-                    iter->next = thread;
+                    iter->link.next = thread;
                 }
-                thread->prev = iter;
-                thread->next = NULL;
+                thread->link.prev = iter;
+                thread->link.next = NULL;
                 thread->queue->tail = thread;
             } else {
-                thread->next = iter;
-                iterPrev = iter->prev;
-                iter->prev = thread;
-                thread->prev = iterPrev;
+                thread->link.next = iter;
+                iterPrev = iter->link.prev;
+                iter->link.prev = thread;
+                thread->link.prev = iterPrev;
 
                 if (iterPrev == NULL) {
                     thread->queue->head = thread;
                 } else {
-                    iterPrev->next = thread;
+                    iterPrev->link.next = thread;
                 }
             }
 
@@ -784,18 +788,18 @@ s32 OSSuspendThread(OSThread* thread) {
             UnsetRun(thread);
             break;
         case OS_THREAD_STATE_SLEEPING:
-            next = thread->next;
-            prev = thread->prev;
+            next = thread->link.next;
+            prev = thread->link.prev;
             if (next == NULL) {
                 thread->queue->tail = prev;
             } else {
-                next->prev = prev;
+                next->link.prev = prev;
             }
 
             if (prev == NULL) {
                 thread->queue->head = next;
             } else {
-                prev->next = next;
+                prev->link.next = next;
             }
 
             thread->priority = OS_PRIORITY_MAX + 1;
@@ -804,11 +808,11 @@ s32 OSSuspendThread(OSThread* thread) {
             if (tail == NULL) {
                 thread->queue->head = thread;
             } else {
-                tail->next = thread;
+                tail->link.next = thread;
             }
 
-            thread->prev = tail;
-            thread->next = NULL;
+            thread->link.prev = tail;
+            thread->link.next = NULL;
             thread->queue->tail = thread;
             tail = thread;
 
@@ -841,7 +845,7 @@ void OSSleepThread(OSThreadQueue* queue) {
 
     for (iter = queue->head;
          iter != NULL && iter->priority <= currThread->priority;
-         iter = iter->next) {
+         iter = iter->link.next) {
     }
 
     if (iter == NULL) {
@@ -849,21 +853,21 @@ void OSSleepThread(OSThreadQueue* queue) {
         if (iter == NULL) {
             queue->head = currThread;
         } else {
-            iter->next = currThread;
+            iter->link.next = currThread;
         }
-        currThread->prev = iter;
-        currThread->next = NULL;
+        currThread->link.prev = iter;
+        currThread->link.next = NULL;
         queue->tail = currThread;
     } else {
-        currThread->next = iter;
-        iterPrev = iter->prev;
-        iter->prev = currThread;
-        currThread->prev = iterPrev;
+        currThread->link.next = iter;
+        iterPrev = iter->link.prev;
+        iter->link.prev = currThread;
+        currThread->link.prev = iterPrev;
 
         if (iterPrev == NULL) {
             queue->head = currThread;
         } else {
-            iterPrev->next = currThread;
+            iterPrev->link.next = currThread;
         }
     }
 
@@ -881,12 +885,12 @@ void OSWakeupThread(OSThreadQueue* queue) {
 
     while (queue->head != NULL) {
         head = queue->head;
-        next = head->next;
+        next = head->link.next;
 
         if (next == NULL) {
             queue->tail = NULL;
         } else {
-            next->prev = NULL;
+            next->link.prev = NULL;
         }
 
         queue->head = next;
@@ -920,10 +924,165 @@ BOOL OSSetThreadPriority(OSThread* thread, s32 prio) {
     return TRUE;
 }
 
+OSPriority OSGetThreadPriority(OSThread* thread) {
+    return thread->base;
+}
+
+BOOL CheckThreadQueue(OSThreadQueue* queue) {
+    OSThread* thread;
+    if (queue->head != NULL && queue->head->link.prev != NULL) {
+        return FALSE;
+    }
+    if (queue->tail != NULL && queue->tail->link.next != NULL) {
+        return FALSE;
+    }
+    for (thread = queue->head; thread != NULL; thread = thread->link.next) {
+        if (thread->link.next != NULL && thread != thread->link.next->link.prev) {
+            return FALSE;
+        }
+        if (thread->link.prev != NULL && thread != thread->link.prev->link.next) {
+            return FALSE;
+        }
+    }
+    return TRUE;
+}
+
+static BOOL IsMember(OSThreadQueue* queue, OSThread* thread) {
+    OSThread* threadFind;
+    for (threadFind = queue->head; threadFind; threadFind = threadFind->link.next) {
+        if (thread == threadFind) {
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
+#define OS_ACTIVE_THREAD_ASSERT(exp, line) {                            \
+    if (!(exp)) {                                                       \
+        OSReport("OSCheckActiveThreads: Failed "#exp" in %d\n", line);  \
+        OSError("");                                                    \
+    }                                                                   \
+}
+
+OSThread* __OSCurrentThread : OS_BASE_CACHED | 0x00E4;
+OSThreadQueue __OSActiveThreadQueue : OS_BASE_CACHED | 0x00DC;
+
+s32 OSCheckActiveThreads() {
+    OSThread* thread;
+    OSPriority prio;
+
+    s32 threadId = 0;
+
+    BOOL enabled = OSDisableInterrupts();
+
+    for (prio = OS_PRIORITY_MIN; prio <= OS_PRIORITY_MAX; prio++) {
+        if (RunQueueBits & (1 << (OS_PRIORITY_MAX - prio))) {
+            OS_ACTIVE_THREAD_ASSERT(RunQueue[prio].head != NULL && RunQueue[prio].tail != NULL, 1513);
+        }
+        else {
+            OS_ACTIVE_THREAD_ASSERT(RunQueue[prio].head == NULL && RunQueue[prio].tail == NULL, 1518);
+        }
+        OS_ACTIVE_THREAD_ASSERT(CheckThreadQueue(&RunQueue[prio]), 1520);
+    }
+
+    OS_ACTIVE_THREAD_ASSERT(__OSActiveThreadQueue.head == NULL || __OSActiveThreadQueue.head->linkActive.prev == NULL, 1525);
+    OS_ACTIVE_THREAD_ASSERT(__OSActiveThreadQueue.tail == NULL || __OSActiveThreadQueue.tail->linkActive.next == NULL, 1527);
+
+    for (thread = __OSActiveThreadQueue.head; thread != NULL; thread = thread->linkActive.next) {
+        threadId++;
+
+        OS_ACTIVE_THREAD_ASSERT(thread->linkActive.next == NULL || thread == thread->linkActive.next->linkActive.prev, 1535);
+        OS_ACTIVE_THREAD_ASSERT(thread->linkActive.prev == NULL || thread == thread->linkActive.prev->linkActive.next, 1537);
+
+        OS_ACTIVE_THREAD_ASSERT(*(thread->stackEnd) == OS_THREAD_STACK_MAGIC, 1540);
+
+        OS_ACTIVE_THREAD_ASSERT(OS_PRIORITY_MIN <= thread->priority && thread->priority <= OS_PRIORITY_MAX+1, 1543);
+        OS_ACTIVE_THREAD_ASSERT(0 <= thread->suspend, 1544);
+        OS_ACTIVE_THREAD_ASSERT(CheckThreadQueue(&thread->queueJoin), 1545);
+
+        switch (thread->state) {
+            case OS_THREAD_STATE_READY: {
+                if (!IsSuspended(thread->suspend)) {
+                    OS_ACTIVE_THREAD_ASSERT(thread->queue == &RunQueue[thread->priority], 1551);
+                    OS_ACTIVE_THREAD_ASSERT(IsMember(&RunQueue[thread->priority], thread), 1552);
+                    OS_ACTIVE_THREAD_ASSERT(thread->priority == __OSGetEffectivePriority(thread), 1553);
+                }
+                break;
+            }
+            case OS_THREAD_STATE_RUNNING: {
+                OS_ACTIVE_THREAD_ASSERT(!IsSuspended(thread->suspend), 1557);
+                OS_ACTIVE_THREAD_ASSERT(thread->queue == NULL, 1558);
+                OS_ACTIVE_THREAD_ASSERT(thread->priority == __OSGetEffectivePriority(thread), 1559);
+                break;
+            }
+            case OS_THREAD_STATE_WAITING: {
+                OS_ACTIVE_THREAD_ASSERT(thread->queue != NULL, 1562);
+                OS_ACTIVE_THREAD_ASSERT(CheckThreadQueue(thread->queue), 1563);
+                OS_ACTIVE_THREAD_ASSERT(IsMember(thread->queue, thread), 1564);
+                if (!IsSuspended(thread->suspend)) {
+                    OS_ACTIVE_THREAD_ASSERT(thread->priority == __OSGetEffectivePriority(thread), 1567);
+                }
+                else {
+                    OS_ACTIVE_THREAD_ASSERT(thread->priority == 32, 1571);
+                }
+                OS_ACTIVE_THREAD_ASSERT(!__OSCheckDeadLock(thread), 1573);
+                break;
+            }
+            case OS_THREAD_STATE_DEAD: {
+                OS_ACTIVE_THREAD_ASSERT(thread->queueMutex.head == NULL && thread->queueMutex.tail == NULL, 1577);
+                break;
+            }
+            default: {
+                OSReport("OSCheckActiveThreads: Failed. unkown thread state (%d) of thread %p\n", thread->state, thread);
+#line 1583
+                OSError("");
+                break;
+            }
+        }
+
+        OS_ACTIVE_THREAD_ASSERT(__OSCheckMutexes(thread), 1588);
+    }
+
+    OSRestoreInterrupts(enabled);
+    return threadId;
+}
+
+void OSSetThreadSpecific(s32 index, void* ptr) {
+    OSThread* thread = __OSCurrentThread;
+    if (thread && 0 <= index && index < 2) {
+        thread->specific[index] = ptr;
+    }
+}
+
+void* OSGetThreadSpecific(s32 index) {
+    OSThread* thread = __OSCurrentThread;
+    if (thread && 0 <= index && index < 2) {
+        return thread->specific[index];
+    }
+    return NULL;
+}
+
 static void SleepAlarmHandler(OSAlarm* alarm, OSContext* ctx) {
 #pragma unused(ctx)
+    OSThread* thread = (OSThread*)OSGetAlarmUserData(alarm);
+    OSThread* t;
+    BOOL found;
 
-    OSResumeThread((OSThread*)OSGetAlarmUserData(alarm));
+    if (thread->state == 0) {
+        found = FALSE;
+    } else {
+        for (t = OS_THREAD_QUEUE.head; t != NULL; t = t->linkActive.next) {
+            if (thread == t) {
+                found = TRUE;
+                goto foundThread;
+            }
+        }
+        found = FALSE;
+    }
+foundThread:
+    if (found) {
+        OSResumeThread((OSThread*)OSGetAlarmUserData(alarm));
+    }
 }
 
 void OSSleepTicks(s64 ticks) {
@@ -940,8 +1099,7 @@ void OSSleepTicks(s64 ticks) {
     }
 
     OSCreateAlarm(&alarm);
-    OSSetAlarmTag(&alarm, (u32)thread);
-    OSSetAlarmUserData(&alarm, thread);
+    __OSSetInternalAlarmUserData(&alarm, thread);
     OSSetAlarm(&alarm, ticks, SleepAlarmHandler);
 
     OSSuspendThread(thread);

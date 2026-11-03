@@ -52,10 +52,6 @@ revolution/OS/OSExec.c:
 	.sbss       start:0x804BCFA8 end:0x804BCFC0
 	.bss        start:0x80571EC0 end:0x80571EE0
 
-revolution/OS/__start.c:
-	.init       start:0x80480000 end:0x80480360
-	.sbss       start:0x804BD040 end:0x804BD048
-
 revolution/OS/OSFatal.c:
 	.text       start:0x803B1440 end:0x803B2070
 	.sdata2     start:0x80485898 end:0x804858D8
@@ -69,7 +65,92 @@ revolution/OS/OSInterrupt.c:
 	.text       start:0x803B3350 end:0x803B3B20
 
 revolution/OS/OSLink.c:
-	.text       start:0x803B4550 end:0x803B4570
+	.text       start:0x803B3B20 end:0x803B4570
+
+revolution/OS/OSMessage.c:
+	.text       start:0x803B4570 end:0x803B4850
+
+revolution/OS/OSMemory.c:
+	.text       start:0x803B4850 end:0x803B4FF0
+	.data       start:0x804DD9E0 end:0x804DD9F0
+
+revolution/OS/OSMutex.c:
+	.text       start:0x803B4FF0 end:0x803B55D0
+
+revolution/OS/OSReboot.c:
+	.text       start:0x803B55D0 end:0x803B5660
+	.sbss       start:0x804BCFF0 end:0x804BCFF8
+
+revolution/OS/OSReset.c:
+	.text       start:0x803B5660 end:0x803B60B0
+	.sbss       start:0x804BCFF8 end:0x804BD008
+	.data       start:0x804DD9F0 end:0x804DDC58
+
+revolution/OS/OSRtc.c:
+	.text       start:0x803B60B0 end:0x803B6B60
+	.bss        start:0x805721C0 end:0x80572218
+
+revolution/OS/OSSemaphore.c:
+	.text       start:0x803B6B60 end:0x803B6CF0
+
+revolution/OS/OSSync.c:
+	.text       start:0x803B6CF0 end:0x803B6D70
+
+revolution/OS/OSThread.c:
+	.text       start:0x803B6D70 end:0x803B8E10
+	.sdata      start:0x804BC280 end:0x804BC288
+	.sbss       start:0x804BD008 end:0x804BD018
+	.data       start:0x804DDC58 end:0x804DE468
+	.bss        start:0x80572218 end:0x80572C20
+
+revolution/OS/OSTime.c:
+	.text       start:0x803B8E10 end:0x803B9240
+	.data       start:0x804DE468 end:0x804DE4C8
+
+revolution/OS/OSUtf.c:
+	.text       start:0x803B9240 end:0x803B9490
+	.data       start:0x804DE4C8 end:0x804EA308
+
+revolution/OS/OSIpc.c:
+	.text       start:0x803B9490 end:0x803B94D0
+	.sdata      start:0x804BC288 end:0x804BC290
+	.sbss       start:0x804BD018 end:0x804BD020
+
+revolution/OS/OSStateTM.c:
+	.text       start:0x803B94D0 end:0x803B9BE0
+	.sbss       start:0x804BD020 end:0x804BD040
+	.data       start:0x804EA308 end:0x804EA3D0
+	.bss        start:0x80572C20 end:0x80572CE0
+
+revolution/OS/__start.c:
+	.init       start:0x80480000 end:0x80480360
+	.sbss       start:0x804BD040 end:0x804BD048
+
+revolution/OS/time.dolphin.c:
+	.text       start:0x803B9BE0 end:0x803B9C30
+
+revolution/OS/OSPlayRecord.c:
+	.text       start:0x803B9C30 end:0x803BA360
+	.sdata      start:0x804BC290 end:0x804BC298
+	.sbss       start:0x804BD048 end:0x804BD068
+	.data       start:0x804EA3D0 end:0x804EA418
+	.bss        start:0x80572CE0 end:0x80572EE0
+
+revolution/OS/OSStateFlags.c:
+	.text       start:0x803BA360 end:0x803BA580
+	.data       start:0x804EA418 end:0x804EA440
+	.bss        start:0x80572EE0 end:0x80572F00
+
+revolution/OS/OSNet.c:
+	.text       start:0x803BA580 end:0x803BA640
+	.data       start:0x804EA440 end:0x804EA4E8
+
+revolution/NWC24/NWC24System.c:
+	.text       start:0x803BA640 end:0x803BA9D0
+	.sdata      start:0x804BC298 end:0x804BC2A0
+	.sbss       start:0x804BD068 end:0x804BD078
+	.data       start:0x804EA4E8 end:0x804EA590
+	.bss        start:0x80572F00 end:0x80572F60
 
 Runtime.PPCEABI.H/global_destructor_chain.c:
 	.text       start:0x80460B24 end:0x80460B84
