@@ -1,5 +1,5 @@
-#ifndef _DOLPHIN_OSMODULE_H_
-#define _DOLPHIN_OSMODULE_H_
+#ifndef RVL_SDK_OS_MODULE_H
+#define RVL_SDK_OS_MODULE_H
 
 #include "revolution/types.h"
 

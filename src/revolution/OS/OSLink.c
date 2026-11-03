@@ -2,9 +2,6 @@
 #include <revolution/OS.h>
 #include <string.h>
 
-OSModuleQueue __OSModuleInfoList : OS_BASE_CACHED | 0x30C8;
-const void* __OSStringTable : OS_BASE_CACHED | 0x30D0;
-
 #define ENQUEUE_INFO(queue, info, link) \
   do {                                  \
     OSModuleInfo* __prev;               \
@@ -37,6 +34,9 @@ const void* __OSStringTable : OS_BASE_CACHED | 0x30D0;
     else                                \
       __prev->link.next = __next;       \
   } while (0)
+
+OSModuleQueue __OSModuleInfoList : OS_BASE_CACHED | 0x30C8;
+const void* __OSStringTable : OS_BASE_CACHED | 0x30D0;
 
 void OSNotifyLink(OSModuleInfo* module) {}
 

@@ -43,6 +43,29 @@ typedef struct {
     ESLpEntry limits[8];
 } ESTicketView;
 
+typedef struct ESTmdViewHeader {
+    ESVersion version;
+    ESSysVersion sysVersion;
+    ESTitleId titleId;
+    ESTitleType type;
+    u16 groupId;
+    ESTmdReserved reserved;
+    ESTitleVersion titleVersion;
+    u16 numContents;
+} ESTmdViewHeader;
+
+typedef struct ESCmdView {
+    ESContentId cid;
+    u16 index;
+    ESContentType type;
+    u64 size;
+} ESCmdView;
+
+typedef struct {
+    ESTmdViewHeader head;
+    ESCmdView contents[512];
+} ESTmdView;
+
 typedef struct {
     ESContentId cid;
     u16 index;
@@ -105,6 +128,17 @@ typedef struct ESPTmd {
     u8 dummy[0x49E4];
     char padding[0x4A00 - 0x49E4];
 } ESPTmd;
+
+s32 ESP_InitLib(void);
+s32 ESP_CloseLib(void);
+s32 ESP_LaunchTitle(u64, ESTicketView *);
+s32 ESP_GetTicketViews(ESTitleId, ESTicketView *, u32 *);
+s32 ESP_DiGetTicketView(const void *, ESTicketView *);
+s32 ESP_DiGetTmd(ESTitleMeta *, u32 *);
+s32 ESP_GetTmdView(ESTitleId, ESTmdView *, u32 *);
+s32 ESP_GetDataDir(ESTitleId, char *);
+s32 ESP_GetTitleId(ESTitleId *);
+s32 ESP_GetConsumption(ESTicketId, ESLpEntry *, u32 *);
 
 s32 ESP_ReadContentFile(UNKWORD, void*, u32);
 s32 ESP_SeekContentFile(UNKWORD, s32, UNKWORD);

@@ -1,5 +1,5 @@
-#ifndef OSPLAYTIME_H
-#define OSPLAYTIME_H
+#ifndef RVL_SDK_OS_PLAYTIME_H
+#define RVL_SDK_OS_PLAYTIME_H
 
 #include <revolution/ESP.h>
 
